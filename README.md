@@ -1,9 +1,8 @@
-```markdown
 # ASL to Text Converter: Real-Time Sign Language Recognition
 
 A real-time American Sign Language (ASL) recognition system capable of identifying 250 distinct signs. This project processes spatial-temporal graph data from hand, pose, and facial landmarks into an optimized neural network architecture, translating continuous sign language into text.
 
-##  Project Progression & Pipeline
+## Project Progression & Pipeline
 This repository is structured to demonstrate an end-to-end Machine Learning lifecycle, progressing from a simple baseline to a highly optimized, competition-grade architecture.
 
 1. **`01_EDA_Baseline_and_Feature_Engineering.ipynb`**
@@ -17,28 +16,29 @@ This repository is structured to demonstrate an end-to-end Machine Learning life
    * **Data Serialization:** Converts processed datasets into compressed TFRecord shards for high-throughput `tf.data` pipeline feeding.
    * **Dynamic Augmentation:** Applies on-the-fly spatial and temporal augmentations (e.g., temporal masking, spatial affine transformations, horizontal flipping) to prevent overfitting and improve model generalization.
 
-##  Real-Time Live Inference
+## Real-Time Live Inference
 The repository includes a live webcam inference script that utilizes Google MediaPipe to extract coordinates in real-time and passes them through the trained model.
 
 ### Dependencies
 Ensure you have Python 3.9+ installed, then install the required packages:
 ```bash
 pip install tensorflow mediapipe opencv-python numpy pandas
+```
 
-Running the Application
+# Running the Application
 Execute the live inference script from the root of the project:
-
-Bash
+```bash
 python src/live_inference.py
+```
 Controls: Press q to exit the video stream.
 
 Functionality: The script buffers 64 frames of live webcam data, extracts the relevant hand/pose/face landmarks, applies the required normalization, and outputs the predicted ASL sign directly onto the video feed.
 
-Repository Structure
-data/: Contains the JSON label map (sign_to_prediction_index_map.json) linking numeric predictions to their 250 English text equivalents. (Note: Heavy raw parquet files and processed TFRecords are ignored via .gitignore).
+# Repository Structure
+* data/: Contains the JSON label map (sign_to_prediction_index_map.json) linking numeric predictions to their 250 English text equivalents. (Note: Heavy raw parquet files and processed TFRecords are ignored via .gitignore).
 
-models/: Houses the final trained model weights, including the baseline (.keras) and the optimized CNN-Transformer hybrid (.h5).
+* models/: Houses the final trained model weights, including the baseline (.keras) and the optimized CNN-Transformer hybrid (.h5).
 
-notebooks/: Contains the complete, 3-stage Jupyter Notebook progression detailing data exploration, feature engineering, and model training.
+* notebooks/: Contains the complete, 3-stage Jupyter Notebook progression detailing data exploration, feature engineering, and model training.
 
-src/: Contains the production-ready live_inference.py script for real-time webcam translation.
+* src/: Contains the production-ready live_inference.py script for real-time webcam translation.
