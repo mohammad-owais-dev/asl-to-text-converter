@@ -23,3 +23,21 @@ The repository includes a live webcam inference script that utilizes Google Medi
 Ensure you have Python 3.9+ installed, then install the required packages:
 ```bash
 pip install tensorflow mediapipe opencv-python numpy pandas
+
+Running the Application
+Execute the live inference script from the root of the project:
+
+Bash
+python src/live_inference.py
+Controls: Press q to exit the video stream.
+
+Functionality: The script buffers 64 frames of live webcam data, extracts the relevant hand/pose/face landmarks, applies the required normalization, and outputs the predicted ASL sign directly onto the video feed.
+
+Repository Structure
+data/: Contains the JSON label map (sign_to_prediction_index_map.json) linking numeric predictions to their 250 English text equivalents. (Note: Heavy raw parquet files and processed TFRecords are ignored via .gitignore).
+
+models/: Houses the final trained model weights, including the baseline (.keras) and the optimized CNN-Transformer hybrid (.h5).
+
+notebooks/: Contains the complete, 3-stage Jupyter Notebook progression detailing data exploration, feature engineering, and model training.
+
+src/: Contains the production-ready live_inference.py script for real-time webcam translation.
