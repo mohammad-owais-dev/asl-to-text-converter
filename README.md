@@ -1,3 +1,4 @@
+```markdown
 # ASL to Text Converter: Real-Time Sign Language Recognition
 
 A real-time American Sign Language (ASL) recognition system capable of identifying 250 distinct signs. This project processes spatial-temporal graph data from hand, pose, and facial landmarks into an optimized neural network architecture, translating continuous sign language into text.
