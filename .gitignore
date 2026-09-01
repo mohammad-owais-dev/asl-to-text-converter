@@ -1,0 +1,16 @@
+# Ignore heavy data folders, but KEEP the JSON label map in data/
+data/raw/
+data/processed/
+*.zip
+*.parquet
+*.tfrecords
+*.npy
+
+# Security
+kaggle.json
+.env
+
+# Ignore PyCharm & Jupyter caches
+.idea/
+.ipynb_checkpoints/
+__pycache__/
