@@ -1,0 +1,6 @@
+tensorflow==2.15.0
+mediapipe>=0.10.9
+opencv-python-headless>=4.9.0
+numpy<2.0.0
+pandas>=1.4.0
+gradio>=4.30.0
