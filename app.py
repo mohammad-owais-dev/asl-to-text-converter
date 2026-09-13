@@ -283,10 +283,5 @@ webrtc_streamer(
     async_processing=True,
 )
 
-# Non-flickering background loop to poll session state updates safely
-while True:
-    prediction_placeholder.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
-    time.sleep(0.3)
-
-# Render the live prediction state from session state
-prediction_container.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
+# Render output text cleanly
+st.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
