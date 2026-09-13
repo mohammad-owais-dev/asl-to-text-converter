@@ -269,18 +269,6 @@ webrtc_streamer(
     async_processing=True,
 )
 
-# Use an auto-refresh loop or widget callback to poll session state values rendered on screen
-# Or add a small placeholder text loop if needed, but streamlit-webrtc video frames will populate buffer instantly now.
-st.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
 
-
-webrtc_streamer(
-    key="asl-stream",
-    mode=WebRtcMode.SENDRECV,
-    rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
-    video_processor_factory=VideoProcessor,
-    media_stream_constraints={"video": True, "audio": False},
-    async_processing=True,
-)
 
 prediction_placeholder.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
