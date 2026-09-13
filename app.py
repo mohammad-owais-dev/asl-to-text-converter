@@ -260,10 +260,12 @@ class VideoProcessor:
 
         return av.VideoFrame.from_ndarray(image, format="rgb24")
 
-from streamlit_autorefresh import st_autorefresh
 
-# Automatically rerun the script every 500ms to fetch latest background predictions
-st_autorefresh(interval=500, limit=None, key="datarefresh")
+
+import time
+
+# Create a container for live updates
+prediction_placeholder = st.empty()
 
 webrtc_streamer(
     key="asl-stream",
@@ -280,6 +282,11 @@ webrtc_streamer(
     media_stream_constraints={"video": True, "audio": False},
     async_processing=True,
 )
+
+# Non-flickering background loop to poll session state updates safely
+while True:
+    prediction_placeholder.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
+    time.sleep(0.3)
 
 # Render the live prediction state from session state
 prediction_container.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
