@@ -223,6 +223,9 @@ if "current_prediction" not in st.session_state:
 prediction_placeholder = st.empty()
 
 
+# Replace the prediction_placeholder definition with a dedicated container
+prediction_container = st.empty()
+
 class VideoProcessor:
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         image = frame.to_ndarray(format="rgb24")
@@ -256,6 +259,19 @@ class VideoProcessor:
             st.session_state.current_prediction = f"Filling Buffer: {len(st.session_state.sequence_buffer)}/64"
 
         return av.VideoFrame.from_ndarray(image, format="rgb24")
+
+webrtc_streamer(
+    key="asl-stream",
+    mode=WebRtcMode.SENDRECV,
+    rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
+    video_processor_factory=VideoProcessor,
+    media_stream_constraints={"video": True, "audio": False},
+    async_processing=True,
+)
+
+# Use an auto-refresh loop or widget callback to poll session state values rendered on screen
+# Or add a small placeholder text loop if needed, but streamlit-webrtc video frames will populate buffer instantly now.
+st.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
 
 
 webrtc_streamer(
