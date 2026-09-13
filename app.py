@@ -226,8 +226,7 @@ prediction_placeholder = st.empty()
 # Replace the prediction_placeholder definition with a dedicated container
 prediction_container = st.empty()
 
-st.title("Real-Time ASL Recognition (Live Demo)")
-st.write("Perform American Sign Language gestures in front of your camera to see real-time predictions.")
+st.write("Wait a min for the buffers to load")
 
 class VideoProcessor:
     def __init__(self):
