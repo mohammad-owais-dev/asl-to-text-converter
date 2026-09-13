@@ -2,12 +2,14 @@ import os
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
+import json
+from collections import deque
+import av
 import numpy as np
 import mediapipe as mp
 import tensorflow as tf
-import gradio as gr
-import json
-from collections import deque
+import streamlit as st
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 
 
 # ==========================================
@@ -186,77 +188,83 @@ def get_model(max_len=CFG.max_len, dropout_step=0, dim=CFG.dim):
 
 
 # ==========================================
-# 3. INITIALIZATION
+# 3. MODEL & PIPELINE CACHING
 # ==========================================
-# Assuming files are in the same root directory on Hugging Face
-with open('data/sign_to_prediction_index_map.json', 'r') as f:
-    label_map = json.load(f)
-inverse_map = {v: k for k, v in label_map.items()}
+@st.cache_resource
+def load_prediction_pipeline():
+    with open('data/sign_to_prediction_index_map.json', 'r') as f:
+        label_map = json.load(f)
+    inverse_map = {v: k for k, v in label_map.items()}
 
-model = get_model()
-model.load_weights('models/v3_fold0_best.h5')
+    model = get_model()
+    model.load_weights('models/v3_fold0_best.h5')
+    preprocessor = Preprocess(max_len=CFG.max_len)
 
-preprocessor = Preprocess(max_len=CFG.max_len)
-mp_holistic = mp.solutions.holistic
-holistic = mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    mp_holistic = mp.solutions.holistic
+    holistic = mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-# Use deque to strictly maintain the 64-frame buffer
-sequence_buffer = deque(maxlen=CFG.max_len)
+    return model, inverse_map, preprocessor, holistic
 
+
+model, inverse_map, preprocessor, holistic = load_prediction_pipeline()
 
 # ==========================================
-# 4. GRADIO LOGIC
+# 4. STREAMLIT APP UI & WEBRTC HANDLER
 # ==========================================
-def predict_sign(image):
-    if image is None:
-        return "Waiting for camera..."
+st.title("Real-Time ASL Recognition (Live Demo)")
+st.write("Perform American Sign Language gestures in front of your camera to see real-time predictions.")
 
-    # Gradio passes RGB images natively, no need to cvtColor
-    results = holistic.process(image)
-    frame_landmarks = np.zeros((543, 3))
+# Session state to hold sequence data and current prediction
+if "sequence_buffer" not in st.session_state:
+    st.session_state.sequence_buffer = deque(maxlen=CFG.max_len)
+if "current_prediction" not in st.session_state:
+    st.session_state.current_prediction = "Waiting for camera..."
 
-    if results.face_landmarks:
-        for i, lm in enumerate(results.face_landmarks.landmark):
-            frame_landmarks[i] = [lm.x, lm.y, lm.z]
-    if results.left_hand_landmarks:
-        for i, lm in enumerate(results.left_hand_landmarks.landmark):
-            frame_landmarks[468 + i] = [lm.x, lm.y, lm.z]
-    if results.pose_landmarks:
-        for i, lm in enumerate(results.pose_landmarks.landmark):
-            frame_landmarks[489 + i] = [lm.x, lm.y, lm.z]
-    if results.right_hand_landmarks:
-        for i, lm in enumerate(results.right_hand_landmarks.landmark):
-            frame_landmarks[522 + i] = [lm.x, lm.y, lm.z]
-
-    frame_landmarks[frame_landmarks == 0.0] = np.nan
-    sequence_buffer.append(frame_landmarks)
-
-    if len(sequence_buffer) == CFG.max_len:
-        # Convert buffer to tensor shape (1, 64, 543, 3)
-        input_tensor = tf.convert_to_tensor([list(sequence_buffer)], dtype=tf.float32)
-
-        # Pass through Preprocess layer to get (1, 64, 708)
-        processed_features = preprocessor(input_tensor)
-
-        # Predict
-        predictions = model.predict(processed_features, verbose=0)
-        predicted_index = np.argmax(predictions[0])
-        predicted_sign = inverse_map.get(predicted_index, "Unknown")
-
-        return f"Sign: {predicted_sign}"
-    else:
-        return f"Filling Buffer: {len(sequence_buffer)}/64"
+prediction_placeholder = st.empty()
 
 
-# Build UI
-demo = gr.Interface(
-    fn=predict_sign,
-    inputs=gr.Image(sources=["webcam"], streaming=True),
-    outputs=gr.Textbox(label="Prediction"),
-    title="Real-Time ASL Recognition (Live Demo)",
-    live=True,
-    flagging_mode="never"
+class VideoProcessor:
+    def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
+        image = frame.to_ndarray(format="rgb24")
+        results = holistic.process(image)
+
+        frame_landmarks = np.zeros((543, 3))
+        if results.face_landmarks:
+            for i, lm in enumerate(results.face_landmarks.landmark):
+                frame_landmarks[i] = [lm.x, lm.y, lm.z]
+        if results.left_hand_landmarks:
+            for i, lm in enumerate(results.left_hand_landmarks.landmark):
+                frame_landmarks[468 + i] = [lm.x, lm.y, lm.z]
+        if results.pose_landmarks:
+            for i, lm in enumerate(results.pose_landmarks.landmark):
+                frame_landmarks[489 + i] = [lm.x, lm.y, lm.z]
+        if results.right_hand_landmarks:
+            for i, lm in enumerate(results.right_hand_landmarks.landmark):
+                frame_landmarks[522 + i] = [lm.x, lm.y, lm.z]
+
+        frame_landmarks[frame_landmarks == 0.0] = np.nan
+        st.session_state.sequence_buffer.append(frame_landmarks)
+
+        if len(st.session_state.sequence_buffer) == CFG.max_len:
+            input_tensor = tf.convert_to_tensor([list(st.session_state.sequence_buffer)], dtype=tf.float32)
+            processed_features = preprocessor(input_tensor)
+            predictions = model.predict(processed_features, verbose=0)
+            predicted_index = np.argmax(predictions[0])
+            predicted_sign = inverse_map.get(predicted_index, "Unknown")
+            st.session_state.current_prediction = f"Sign: {predicted_sign}"
+        else:
+            st.session_state.current_prediction = f"Filling Buffer: {len(st.session_state.sequence_buffer)}/64"
+
+        return av.VideoFrame.from_ndarray(image, format="rgb24")
+
+
+webrtc_streamer(
+    key="asl-stream",
+    mode=WebRtcMode.SENDRECV,
+    rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
+    video_processor_factory=VideoProcessor,
+    media_stream_constraints={"video": True, "audio": False},
+    async_processing=True,
 )
 
-if __name__ == "__main__":
-    demo.launch()
+prediction_placeholder.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
