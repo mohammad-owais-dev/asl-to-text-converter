@@ -260,6 +260,11 @@ class VideoProcessor:
 
         return av.VideoFrame.from_ndarray(image, format="rgb24")
 
+from streamlit_autorefresh import st_autorefresh
+
+# Automatically rerun the script every 500ms to fetch latest background predictions
+st_autorefresh(interval=500, limit=None, key="datarefresh")
+
 webrtc_streamer(
     key="asl-stream",
     mode=WebRtcMode.SENDRECV,
@@ -269,6 +274,5 @@ webrtc_streamer(
     async_processing=True,
 )
 
-
-
-prediction_placeholder.markdown(f"### Prediction: **{st.session_state.current_prediction}**")
+# Render the live prediction state from session state
+prediction_container.markdown(f"### Prediction: **{st.session_state.current_prediction}**")

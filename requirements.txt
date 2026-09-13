@@ -6,3 +6,4 @@ pandas>=1.4.0
 streamlit==1.38.0
 streamlit-webrtc>=0.47.3
 av==12.3.0
+streamlit-autorefresh==1.0.1
