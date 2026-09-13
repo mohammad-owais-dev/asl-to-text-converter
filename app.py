@@ -268,7 +268,14 @@ st_autorefresh(interval=500, limit=None, key="datarefresh")
 webrtc_streamer(
     key="asl-stream",
     mode=WebRtcMode.SENDRECV,
-    frontend_rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+    frontend_rtc_configuration={
+        "iceServers": [
+            {"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]},
+            {"urls": ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+             "username": "openrelayproject",
+             "credential": "openrelayproject"}
+        ]
+    },
     video_processor_factory=VideoProcessor,
     media_stream_constraints={"video": True, "audio": False},
     async_processing=True,
