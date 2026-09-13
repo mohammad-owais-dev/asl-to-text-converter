@@ -1,5 +1,5 @@
 import os
-
+import cv2
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 import json
@@ -226,7 +226,15 @@ prediction_placeholder = st.empty()
 # Replace the prediction_placeholder definition with a dedicated container
 prediction_container = st.empty()
 
+st.title("Real-Time ASL Recognition (Live Demo)")
+st.write("Perform American Sign Language gestures in front of your camera to see real-time predictions.")
+
 class VideoProcessor:
+    def __init__(self):
+        # Store buffer and prediction locally in the class instance, not in st.session_state
+        self.sequence_buffer = deque(maxlen=CFG.max_len)
+        self.prediction_text = "Waiting for camera..."
+
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         image = frame.to_ndarray(format="rgb24")
         results = holistic.process(image)
@@ -246,27 +254,34 @@ class VideoProcessor:
                 frame_landmarks[522 + i] = [lm.x, lm.y, lm.z]
 
         frame_landmarks[frame_landmarks == 0.0] = np.nan
-        st.session_state.sequence_buffer.append(frame_landmarks)
+        self.sequence_buffer.append(frame_landmarks)
 
-        if len(st.session_state.sequence_buffer) == CFG.max_len:
-            input_tensor = tf.convert_to_tensor([list(st.session_state.sequence_buffer)], dtype=tf.float32)
+        if len(self.sequence_buffer) == CFG.max_len:
+            input_tensor = tf.convert_to_tensor([list(self.sequence_buffer)], dtype=tf.float32)
             processed_features = preprocessor(input_tensor)
             predictions = model.predict(processed_features, verbose=0)
             predicted_index = np.argmax(predictions[0])
             predicted_sign = inverse_map.get(predicted_index, "Unknown")
-            st.session_state.current_prediction = f"Sign: {predicted_sign}"
+            self.prediction_text = f"Sign: {predicted_sign}"
         else:
-            st.session_state.current_prediction = f"Filling Buffer: {len(st.session_state.sequence_buffer)}/64"
+            self.prediction_text = f"Filling Buffer: {len(self.sequence_buffer)}/64"
 
-        return av.VideoFrame.from_ndarray(image, format="rgb24")
+        # Draw the text directly onto the video frame
+        annotated_image = image.copy()
+        cv2.putText(
+            annotated_image,
+            self.prediction_text,
+            (20, 50),                     # Coordinates (x, y) for the text
+            cv2.FONT_HERSHEY_SIMPLEX,     # Font style
+            1,                            # Font scale
+            (0, 255, 0),                  # Color (Green in RGB)
+            2,                            # Thickness
+            cv2.LINE_AA
+        )
 
+        return av.VideoFrame.from_ndarray(annotated_image, format="rgb24")
 
-
-import time
-
-# Create a container for live updates
-prediction_placeholder = st.empty()
-
+# Launch the streamer (no external prediction placeholders needed)
 webrtc_streamer(
     key="asl-stream",
     mode=WebRtcMode.SENDRECV,
